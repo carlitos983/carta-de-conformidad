@@ -1,0 +1,21 @@
+ACTA DE CONFORMIDAD - Gráfica Silvestre
+========================================
+
+1. Abra index.html en Chrome o Edge (doble clic).
+
+2. La primera vez (o si cambia el PDF plantilla), genere el membrete nítido:
+     python extraer-assets-acta.py
+   (Lee el PDF "ACTA DE CONFORMIDAD GRAFICA SILVESTRE.pdf" en Descargas)
+
+3. Complete cliente, RUC, servicio y la tabla. La fecha es automática.
+
+4. Pulse "Generar PDF del acta".
+
+IMPORTANTE: No use los logos de la proforma (salen borrosos).
+            Use extraer-assets-acta.py, que toma las imágenes del PDF del acta.
+
+Archivos:
+   index.html              -> formulario y generador
+   logos.js                -> membrete, pie y firma (generado, alta resolución)
+   extraer-assets-acta.py  -> crea logos.js desde su PDF de acta
+   actualizar-logos.py     -> antiguo (proformas), ya no se usa
