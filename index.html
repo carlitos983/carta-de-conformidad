@@ -87,16 +87,16 @@ textarea { resize: vertical; min-height: 70px; }
         <label>Fecha (autom&#225;tica)</label>
         <input type="text" id="fecha" readonly />
       </div>
-      <div class="field" style="max-width:120px">
-        <label>N&#176; acta (opcional)</label>
-        <input type="text" id="numero" placeholder="0001" inputmode="numeric" />
+      <div class="field">
+        <label>N&#176; orden de compra</label>
+        <input type="text" id="ordenCompra" placeholder="Ej. 867-2026" />
       </div>
     </div>
     <div class="field">
       <label>Servicio / producto</label>
-      <input type="text" id="servicio" placeholder='Ej. ETIQUETAS ADHESIVAS' />
+      <input type="text" id="servicio" placeholder='Ej. BOLSAS PUBLICITARIAS Y LAPICEROS' />
     </div>
-    <p class="hint">La fecha es la de hoy (Per&#250;). El nombre del servicio aparece entre comillas en el PDF. La descripci&#243;n del &#237;tem se copia sola desde &quot;Servicio&quot;.</p>
+    <p class="hint">La fecha es la de hoy (Per&#250;). El servicio va entre comillas en el PDF. La orden de compra aparece en el p&#225;rrafo sobre la tabla.</p>
   </div>
 </div>
 
@@ -129,9 +129,6 @@ textarea { resize: vertical; min-height: 70px; }
 <script>
 if (typeof IMG_HEADER === 'undefined') { var IMG_HEADER = null; }
 if (typeof IMG_FOOTER === 'undefined') { var IMG_FOOTER = null; }
-if (typeof IMG_FIRMA === 'undefined') { var IMG_FIRMA = null; }
-var LS_NUM = 'gs_acta_ultimo_numero';
-
 var items = [{ id: 1, desc: '', qty: '1', price: '' }];
 var nextId = 2;
 var onIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
@@ -146,22 +143,6 @@ function hoyPeru() {
   }
 }
 
-function padNum(n) {
-  var s = String(parseInt(n, 10) || 1);
-  while (s.length < 4) s = '0' + s;
-  return s;
-}
-
-function initNumero() {
-  var el = document.getElementById('numero');
-  try {
-    var last = parseInt(localStorage.getItem(LS_NUM), 10) || 0;
-    el.value = padNum(last + 1);
-  } catch (e) {
-    el.value = '0001';
-  }
-}
-
 function updateLogoStatus() {
   var el = document.getElementById('logoStatus');
   var sec = document.getElementById('logoSection');
@@ -172,16 +153,6 @@ function updateLogoStatus() {
   }
   if (sec) sec.style.display = 'block';
   if (el) el.textContent = 'Ejecute extraer-assets-acta.py para cargar el membrete';
-}
-
-function fechaLarga(fechaStr) {
-  var meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-  var p = fechaStr.split('/');
-  if (p.length !== 3) return fechaStr;
-  var d = parseInt(p[0], 10);
-  var m = parseInt(p[1], 10) - 1;
-  if (m < 0 || m > 11 || !d) return fechaStr;
-  return d + ' de ' + meses[m] + ' del ' + p[2];
 }
 
 function syncServicioADesc() {
@@ -355,6 +326,10 @@ function validar() {
     alert('Ingrese el servicio o producto.');
     return false;
   }
+  if (!document.getElementById('ordenCompra').value.trim()) {
+    alert('Ingrese el número de orden de compra.');
+    return false;
+  }
   var tiene = items.some(function(it) {
     return it.desc.trim() && (parseFloat(it.qty) || 0) > 0 && (parseFloat(it.price) || 0) > 0;
   });
@@ -405,7 +380,6 @@ function generarPDF() {
   var W = 210, PH = 297, ml = 15, mr = 15, mt = 6, cw = W - ml - mr;
   var RED = [232, 0, 14];
   var BLACK = [0, 0, 0];
-  var GRAY = [90, 90, 90];
   var footerH = footerAlturaMm(cw);
   var footerTop = PH - footerH - 2;
   var limiteContenido = footerTop - 40;
@@ -439,9 +413,8 @@ function generarPDF() {
   var ruc = document.getElementById('ruc').value.trim().replace(/\s/g, '');
   var fecha = document.getElementById('fecha').value.trim();
   var servicio = document.getElementById('servicio').value.trim().toUpperCase();
-  var numero = document.getElementById('numero').value.trim();
+  var ordenCompra = document.getElementById('ordenCompra').value.trim();
   var totales = calcTotales();
-  var fechaExt = fechaLarga(fecha);
 
   var y = dibujarMembrete(doc, ml, mt, cw);
 
@@ -456,21 +429,19 @@ function generarPDF() {
   var fechaTxt = 'Fecha : ' + fecha;
   sf('bold', 9, BLACK);
   doc.text(fechaTxt, W - mr, y + 4, { align: 'right' });
-  if (numero) {
-    sf('normal', 8.5, GRAY);
-    doc.text('Ref. ' + numero, W - mr, y + 9, { align: 'right' });
-  }
-  y += Math.max(servLinesTop.length * 5, numero ? 12 : 8);
+  y += Math.max(servLinesTop.length * 5, 8);
 
   sf('bold', 10, BLACK);
   doc.text('Cliente: ' + cliente + ' - RUC ' + ruc, ml, y);
   y += 7;
 
   sf('normal', 9.5, BLACK);
-  var intro = 'Con fecha "' + fechaExt + '", se concluyen satisfactoriamente los servicios y/o productos detallados en el cuadro adjunto, correspondientes al cliente "' + cliente + '".';
-  var introLines = doc.splitTextToSize(intro, cw);
-  doc.text(introLines, ml, y);
-  y += introLines.length * 4.2 + 5;
+  var intro1 = 'Se concluyen satisfactoriamente los servicios y/o productos detallados en el cuadro adjunto, correspondientes a';
+  var intro2 = 'la orden de compra N\u00b0 ' + ordenCompra;
+  doc.text(intro1, ml, y);
+  y += 4.2;
+  doc.text(intro2, ml, y);
+  y += 7;
 
   var colW = [11, 18, cw - 11 - 18 - 30 - 30, 30, 30];
   var colPos = [];
@@ -569,58 +540,44 @@ function generarPDF() {
   y += 9;
 
   sf('normal', 9, BLACK);
-  var p1 = 'Luego de realizar la revisión y verificación respectiva, los representantes de ambas partes confirman la conformidad del cumplimiento del servicio y de las especificaciones indicadas.';
-  var p2 = 'En señal de aceptación y conformidad, se firma la presente acta.';
+  var p1 = 'Luego de realizar la revisi\u00f3n y verificaci\u00f3n respectiva, los representantes de ambas partes validan el cumplimiento del servicio y de las especificaciones indicadas.';
+  var p2 = 'En se\u00f1al de aceptaci\u00f3n y conformidad, se firma la presente acta.';
   var w1 = doc.splitTextToSize(p1, cw);
   doc.text(w1, ml, y);
   y += w1.length * 4.2 + 2;
   var w2 = doc.splitTextToSize(p2, cw);
   doc.text(w2, ml, y);
-  y += w2.length * 4.2 + 6;
+  y += w2.length * 4.2 + 10;
 
-  var sigY = Math.min(y, limiteContenido - 30);
-  var box = 20;
   var anchoFirma = 72;
   var cxIzq = ml + anchoFirma / 2;
   var xDer = ml + 98;
   var cxDer = xDer + anchoFirma / 2;
+  var sigY = Math.min(y, limiteContenido - 28);
 
-  if (IMG_FIRMA) {
-    doc.setDrawColor(180, 180, 180);
-    doc.setLineWidth(0.3);
-    doc.rect(cxIzq - box / 2, sigY, box, box);
-    doc.addImage(IMG_FIRMA, 'PNG', cxIzq - box / 2 + 1, sigY + 1, box - 2, box - 2, undefined, 'SLOW');
-  }
-  var lineY = sigY + box + 4;
   doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(0.35);
-  doc.line(ml, lineY, ml + anchoFirma, lineY);
-  doc.line(xDer, lineY, xDer + anchoFirma, lineY);
+  doc.line(ml, sigY, ml + anchoFirma, sigY);
+  doc.line(xDer, sigY, xDer + anchoFirma, sigY);
 
-  var ty = lineY + 5;
-  sf('bold', 8, BLACK);
-  doc.text('GRAFICA SILVESTRE S.A.C.', cxIzq, ty, { align: 'center' });
-  doc.text('GERENTE GENERAL', cxIzq, ty + 4.5, { align: 'center' });
+  var ty = sigY + 5;
   sf('normal', 8, BLACK);
-  doc.text('DNI: 09923984', cxIzq, ty + 9, { align: 'center' });
+  doc.text('p. GRAFICA SILVESTRE S.A.C.', cxIzq, ty, { align: 'center' });
+  doc.text('Carlos Silvestre Bermudez', cxIzq, ty + 4.5, { align: 'center' });
+  doc.text('RUC: 20611625112', cxIzq, ty + 9, { align: 'center' });
 
   sf('bold', 8, BLACK);
   var cliLines = doc.splitTextToSize(cliente, anchoFirma - 4);
   doc.text(cliLines, cxDer, ty, { align: 'center' });
-  sf('normal', 8, GRAY);
+  sf('normal', 8, BLACK);
   doc.text('RUC: ' + ruc, cxDer, ty + cliLines.length * 4, { align: 'center' });
 
   dibujarPiePagina(doc, ml, cw, PH);
 
-  try {
-    var n = parseInt(numero.replace(/\D/g, ''), 10);
-    if (n) localStorage.setItem(LS_NUM, String(n));
-  } catch (e) {}
-
   var blob = doc.output('blob');
   var url = URL.createObjectURL(blob);
-  var slug = cliente.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 24);
-  var fname = 'Acta_Conformidad_' + (numero ? numero + '_' : '') + slug + '.pdf';
+  var slug = cliente.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 28);
+  var fname = 'Acta_Conformidad_' + slug + '.pdf';
   if (onIOS) {
     window.open(url, '_blank');
     document.getElementById('modalOverlay').classList.add('show');
@@ -641,7 +598,6 @@ function cerrarModal() {
 
 function iniciarApp() {
   document.getElementById('fecha').value = hoyPeru();
-  initNumero();
   document.getElementById('servicio').addEventListener('input', syncServicioADesc);
   document.getElementById('btnAdd').addEventListener('click', addItem);
   document.getElementById('btnGenerar').addEventListener('click', generarPDF);
