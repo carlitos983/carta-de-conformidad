@@ -105,13 +105,13 @@ textarea { resize: vertical; min-height: 70px; }
   <div class="section-body">
     <div id="itemsContainer"></div>
     <button type="button" class="btn-add" id="btnAdd">+ Agregar &#237;tem</button>
-    <p class="hint">Los precios ingresados ya incluyen IGV. El sub total e IGV se desglosan automáticamente (igual que en proformas).</p>
+    <p class="hint">Precios sin IGV. Sub total = suma de ítems; IGV 18% se suma encima; Total = Sub total + IGV (como orden de compra).</p>
     <div class="total-preview">
-      <div class="total-line"><span>Sub total (sin IGV)</span><span id="subtotalDisplay">S/ 0.00</span></div>
+      <div class="total-line"><span>Sub total</span><span id="subtotalDisplay">S/ 0.00</span></div>
       <div class="total-line"><span>IGV 18%</span><span id="igvDisplay">S/ 0.00</span></div>
       <div class="total-line"><span>Total</span><span id="totalDisplay">S/ 0.00</span></div>
     </div>
-    <p class="total-note">Total = suma de ítems (precios con IGV incluido).</p>
+    <p class="total-note">Total = Sub total + IGV 18%.</p>
   </div>
 </div>
 
@@ -208,21 +208,26 @@ function fmtPrecioUnitario(valorStr) {
   return 'S/' + formatoPrecioIngresado(valorStr);
 }
 
+/** Total de línea redondeado a 2 decimales (igual en pantalla, subtotal y PDF) */
+function montoLinea(qty, priceStr) {
+  var q = parseFloat(qty) || 0;
+  var p = parseFloat(String(priceStr).replace(',', '.')) || 0;
+  return redondear2(q * p);
+}
+
 function getTotal() {
   var t = 0;
   for (var i = 0; i < items.length; i++) {
-    var q = parseFloat(items[i].qty) || 0;
-    var p = parseFloat(String(items[i].price).replace(',', '.')) || 0;
-    t += q * p;
+    t += montoLinea(items[i].qty, items[i].price);
   }
   return redondear2(t);
 }
 
-/** Precios con IGV incluido (como proformas): total = suma ítems; subtotal e IGV se desglosan */
+/** Sub total = suma ítems (sin IGV); IGV 18% encima; Total = subtotal + igv */
 function calcTotales() {
-  var total = getTotal();
-  var subtotal = redondear2(total / 1.18);
-  var igv = redondear2(total - subtotal);
+  var subtotal = getTotal();
+  var igv = redondear2(subtotal * 0.18);
+  var total = redondear2(subtotal + igv);
   return { subtotal: subtotal, igv: igv, total: total };
 }
 
@@ -273,7 +278,7 @@ function renderItems() {
       fQty.appendChild(qty);
       var fPrice = document.createElement('div');
       fPrice.className = 'field';
-      fPrice.innerHTML = '<label>Precio unitario (S/) — incl. IGV</label>';
+      fPrice.innerHTML = '<label>Precio unitario (S/) sin IGV</label>';
       var price = document.createElement('input');
       price.type = 'text';
       price.inputMode = 'decimal';
@@ -287,9 +292,7 @@ function renderItems() {
       var sub = document.createElement('div');
       sub.className = 'item-subtotal';
       function updateSub(cardEl, it) {
-        var qn = parseFloat(it.qty) || 0;
-        var pn = parseFloat(it.price) || 0;
-        sub.textContent = 'Subtotal ítem: ' + fmtMonto(qn * pn);
+        sub.textContent = 'Subtotal ítem: ' + fmtMonto(montoLinea(it.qty, it.price));
       }
       updateSub(card, item);
       if (items.length > 1) {
@@ -509,8 +512,8 @@ function generarPDF() {
   for (var ri = 0; ri < vi.length; ri++) {
     var it = vi[ri];
     var q = parseFloat(it.qty) || 0;
-    var p = parseFloat(it.price) || 0;
-    var rs = q * p;
+    var p = parseFloat(String(it.price).replace(',', '.')) || 0;
+    var rs = montoLinea(it.qty, it.price);
     var dl = it.desc.trim() ? doc.splitTextToSize(it.desc.trim(), colW[2] - descPad * 2) : [''];
     var rowH = Math.max(MIN_ROW, dl.length * 3.85 + 5);
 
