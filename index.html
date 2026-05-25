@@ -105,12 +105,13 @@ textarea { resize: vertical; min-height: 70px; }
   <div class="section-body">
     <div id="itemsContainer"></div>
     <button type="button" class="btn-add" id="btnAdd">+ Agregar &#237;tem</button>
+    <p class="hint">Los precios ingresados ya incluyen IGV. El sub total e IGV se desglosan automáticamente (igual que en proformas).</p>
     <div class="total-preview">
-      <div class="total-line"><span>Sub total</span><span id="subtotalDisplay">S/ 0.00</span></div>
+      <div class="total-line"><span>Sub total (sin IGV)</span><span id="subtotalDisplay">S/ 0.00</span></div>
       <div class="total-line"><span>IGV 18%</span><span id="igvDisplay">S/ 0.00</span></div>
       <div class="total-line"><span>Total</span><span id="totalDisplay">S/ 0.00</span></div>
     </div>
-    <p class="total-note">Sub total = suma de ítems. Al total se le suma IGV 18%.</p>
+    <p class="total-note">Total = suma de ítems (precios con IGV incluido).</p>
   </div>
 </div>
 
@@ -246,11 +247,11 @@ function getTotal() {
   return redondear2(t);
 }
 
-/** Sub total = suma de ítems; IGV 18% se suma encima */
+/** Precios con IGV incluido (como proformas): total = suma ítems; subtotal e IGV se desglosan */
 function calcTotales() {
-  var subtotal = getTotal();
-  var igv = redondear2(subtotal * 0.18);
-  var total = redondear2(subtotal + igv);
+  var total = getTotal();
+  var subtotal = redondear2(total / 1.18);
+  var igv = redondear2(total - subtotal);
   return { subtotal: subtotal, igv: igv, total: total };
 }
 
@@ -301,7 +302,7 @@ function renderItems() {
       fQty.appendChild(qty);
       var fPrice = document.createElement('div');
       fPrice.className = 'field';
-      fPrice.innerHTML = '<label>Precio unitario (S/)</label>';
+      fPrice.innerHTML = '<label>Precio unitario (S/) — incl. IGV</label>';
       var price = document.createElement('input');
       price.type = 'text';
       price.inputMode = 'decimal';
